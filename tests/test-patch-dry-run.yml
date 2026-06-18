@@ -1,0 +1,49 @@
+name: Test patch bump dry run
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: action
+        uses: .
+        with:
+          bump: patch
+          github_token: ${{ github.token }}
+          dry_run: true
+      - name: Assert version output is set
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+        run: |
+          echo "version: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: expected version output to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Assert version_optimistic output is set
+        env:
+          VERSION_OPT: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version_optimistic: $VERSION_OPT"
+          if [ -z "$VERSION_OPT" ]; then
+            echo "FAIL: expected version_optimistic output to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Assert version_tag output is set
+        env:
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+        run: |
+          echo "version_tag: $VERSION_TAG"
+          if [ -z "$VERSION_TAG" ]; then
+            echo "FAIL: expected version_tag output to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
