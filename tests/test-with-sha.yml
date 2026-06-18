@@ -1,0 +1,32 @@
+name: Test dry-run with explicit SHA
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Get current SHA
+        id: get-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - id: action
+        uses: .
+        with:
+          bump: minor
+          github_token: ${{ github.token }}
+          dry_run: true
+          sha: ${{ steps.get-sha.outputs.sha }}
+      - name: Assert version output is set
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+          SHA: ${{ steps.get-sha.outputs.sha }}
+        run: |
+          echo "sha used: $SHA"
+          echo "version: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: expected version output to be non-empty when sha is provided"
+            exit 1
+          fi
+          echo "PASS: version is $VERSION"
