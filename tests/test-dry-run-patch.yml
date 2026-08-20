@@ -1,0 +1,52 @@
+name: Test dry-run patch bump
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - id: action
+        uses: .
+        with:
+          bump: patch
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: true
+          per_branch: true
+
+      - name: Assert version output is set
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+          VERSION_OPTIMISTIC: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version: $VERSION"
+          echo "version_tag: $VERSION_TAG"
+          echo "version_optimistic: $VERSION_OPTIMISTIC"
+
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: version output is empty"
+            exit 1
+          fi
+
+          # Version should be a valid semver (digits.digits.digits with optional pre-release)
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "FAIL: version '$VERSION' does not look like a semver"
+            exit 1
+          fi
+
+          if [ -z "$VERSION_OPTIMISTIC" ]; then
+            echo "FAIL: version_optimistic output is empty"
+            exit 1
+          fi
+
+          # version_optimistic should be major.minor
+          if ! echo "$VERSION_OPTIMISTIC" | grep -qE '^[0-9]+\.[0-9]+$'; then
+            echo "FAIL: version_optimistic '$VERSION_OPTIMISTIC' does not look like major.minor"
+            exit 1
+          fi
+
+          echo "PASS: version=$VERSION version_optimistic=$VERSION_OPTIMISTIC version_tag=$VERSION_TAG"

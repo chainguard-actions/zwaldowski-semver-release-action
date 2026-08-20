@@ -1,0 +1,61 @@
+name: Test dry-run major bump
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - id: action
+        uses: .
+        with:
+          bump: major
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: true
+          per_branch: true
+
+      - name: Assert major bump version output
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+          VERSION_OPTIMISTIC: ${{ steps.action.outputs.version_optimistic }}
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+        run: |
+          echo "version: $VERSION"
+          echo "version_optimistic: $VERSION_OPTIMISTIC"
+          echo "version_tag: $VERSION_TAG"
+
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: version output is empty"
+            exit 1
+          fi
+
+          # Version should be a valid semver
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "FAIL: version '$VERSION' does not look like a semver"
+            exit 1
+          fi
+
+          # For a major bump, minor and patch should be 0
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          if [ "$MINOR" != "0" ] || [ "$PATCH" != "0" ]; then
+            echo "FAIL: major bump should produce X.0.0 but got '$VERSION'"
+            exit 1
+          fi
+
+          # version_optimistic should match major.minor (i.e. X.0)
+          if [ -z "$VERSION_OPTIMISTIC" ]; then
+            echo "FAIL: version_optimistic is empty"
+            exit 1
+          fi
+
+          # version_tag should equal version (no prefix by default)
+          if [ "$VERSION_TAG" != "$VERSION" ]; then
+            echo "FAIL: version_tag '$VERSION_TAG' should equal version '$VERSION' when no prefix"
+            exit 1
+          fi
+
+          echo "PASS: version=$VERSION version_optimistic=$VERSION_OPTIMISTIC version_tag=$VERSION_TAG"

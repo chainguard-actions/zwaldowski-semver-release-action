@@ -1,0 +1,55 @@
+name: Test dry-run minor bump with v prefix
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - id: action
+        uses: .
+        with:
+          bump: minor
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: true
+          prefix: "v"
+          per_branch: true
+
+      - name: Assert version and version_tag outputs
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+          VERSION_OPTIMISTIC: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version: $VERSION"
+          echo "version_tag: $VERSION_TAG"
+          echo "version_optimistic: $VERSION_OPTIMISTIC"
+
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: version output is empty"
+            exit 1
+          fi
+
+          # Version should be a valid semver
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "FAIL: version '$VERSION' does not look like a semver"
+            exit 1
+          fi
+
+          # version_tag should start with "v" prefix
+          if ! echo "$VERSION_TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "FAIL: version_tag '$VERSION_TAG' should start with 'v' prefix"
+            exit 1
+          fi
+
+          # version_tag should be "v" + version
+          EXPECTED_TAG="v${VERSION}"
+          if [ "$VERSION_TAG" != "$EXPECTED_TAG" ]; then
+            echo "FAIL: version_tag '$VERSION_TAG' != expected '$EXPECTED_TAG'"
+            exit 1
+          fi
+
+          echo "PASS: version=$VERSION version_tag=$VERSION_TAG version_optimistic=$VERSION_OPTIMISTIC"
