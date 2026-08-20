@@ -12,7 +12,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v3 | [`v3`](https://github.com/chainguard-actions/zwaldowski-semver-release-action/tree/v3) | [`a00dfb8`](https://github.com/zwaldowski/semver-release-action/commit/a00dfb8ec7361325376dafedffcd62c8bdcbb2fb) |
 | v4 | [`v4`](https://github.com/chainguard-actions/zwaldowski-semver-release-action/tree/v4) | [`a6a8309`](https://github.com/zwaldowski/semver-release-action/commit/a6a8309186ccf60c52ea2463a723c78d3b924577) |
 | v5 | [`v5`](https://github.com/chainguard-actions/zwaldowski-semver-release-action/tree/v5) | — |
-| v6 | [`v6`](https://github.com/chainguard-actions/zwaldowski-semver-release-action/tree/v6) | — |
+| v6 | [`v6`](https://github.com/chainguard-actions/zwaldowski-semver-release-action/tree/v6) | [`a1fcf12`](https://github.com/zwaldowski/semver-release-action/commit/a1fcf12dda3d10c122d1d9cb161dece6363c7e19) |
 
 ## Privacy
 
