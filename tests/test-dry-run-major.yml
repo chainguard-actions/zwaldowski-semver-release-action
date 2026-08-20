@@ -1,0 +1,67 @@
+name: Test dry-run major bump
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git config, initial tag, and local origin
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          # Create an initial version tag
+          git tag 3.5.2
+          # Set up a local bare repo as origin so git fetch --tags works
+          rm -rf /tmp/test-semver-major-remote
+          git init --bare /tmp/test-semver-major-remote
+          git push /tmp/test-semver-major-remote HEAD:refs/heads/act-harness
+          git push /tmp/test-semver-major-remote --tags
+          git remote set-url origin /tmp/test-semver-major-remote 2>/dev/null || \
+            git remote add origin /tmp/test-semver-major-remote
+
+      - id: action
+        uses: .
+        with:
+          bump: major
+          dry_run: true
+          per_branch: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assert version is 4.0.0 (major bump from 3.5.2)
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+        run: |
+          echo "version: $VERSION"
+          if [ "$VERSION" != "4.0.0" ]; then
+            echo "FAIL: expected '4.0.0' but got '$VERSION'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_optimistic is 4.0
+        env:
+          VERSION_OPTIMISTIC: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version_optimistic: $VERSION_OPTIMISTIC"
+          if [ "$VERSION_OPTIMISTIC" != "4.0" ]; then
+            echo "FAIL: expected '4.0' but got '$VERSION_OPTIMISTIC'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_tag equals version (no prefix)
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+        run: |
+          echo "version: $VERSION"
+          echo "version_tag: $VERSION_TAG"
+          if [ "$VERSION_TAG" != "$VERSION" ]; then
+            echo "FAIL: expected version_tag to equal version but got '$VERSION_TAG' vs '$VERSION'"
+            exit 1
+          fi
+          echo "PASS"

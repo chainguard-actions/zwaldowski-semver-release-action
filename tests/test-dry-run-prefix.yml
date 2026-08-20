@@ -1,0 +1,66 @@
+name: Test dry-run with version prefix
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git config, initial tag with v prefix, and local origin
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          # Create an initial version tag with "v" prefix
+          git tag v2.3.4
+          # Set up a local bare repo as origin so git fetch --tags works
+          rm -rf /tmp/test-semver-prefix-remote
+          git init --bare /tmp/test-semver-prefix-remote
+          git push /tmp/test-semver-prefix-remote HEAD:refs/heads/act-harness
+          git push /tmp/test-semver-prefix-remote --tags
+          git remote set-url origin /tmp/test-semver-prefix-remote 2>/dev/null || \
+            git remote add origin /tmp/test-semver-prefix-remote
+
+      - id: action
+        uses: .
+        with:
+          bump: minor
+          dry_run: true
+          per_branch: true
+          prefix: "v"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assert version is 2.4.0 (minor bump from 2.3.4)
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+        run: |
+          echo "version: $VERSION"
+          if [ "$VERSION" != "2.4.0" ]; then
+            echo "FAIL: expected '2.4.0' but got '$VERSION'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_tag has v prefix
+        env:
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+        run: |
+          echo "version_tag: $VERSION_TAG"
+          if [ "$VERSION_TAG" != "v2.4.0" ]; then
+            echo "FAIL: expected 'v2.4.0' but got '$VERSION_TAG'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_optimistic is 2.4
+        env:
+          VERSION_OPTIMISTIC: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version_optimistic: $VERSION_OPTIMISTIC"
+          if [ "$VERSION_OPTIMISTIC" != "2.4" ]; then
+            echo "FAIL: expected '2.4' but got '$VERSION_OPTIMISTIC'"
+            exit 1
+          fi
+          echo "PASS"

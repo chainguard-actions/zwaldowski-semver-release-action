@@ -1,0 +1,100 @@
+name: Test dry-run patch bump
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git config, initial tag, and local origin
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          # Create an initial version tag so the action has something to bump from
+          git tag 1.0.0
+          # Set up a local bare repo as origin so git fetch --tags works
+          rm -rf /tmp/test-semver-patch-remote
+          git init --bare /tmp/test-semver-patch-remote
+          git push /tmp/test-semver-patch-remote HEAD:refs/heads/act-harness
+          git push /tmp/test-semver-patch-remote --tags
+          git remote set-url origin /tmp/test-semver-patch-remote 2>/dev/null || \
+            git remote add origin /tmp/test-semver-patch-remote
+
+      - id: action
+        uses: .
+        with:
+          bump: patch
+          dry_run: true
+          per_branch: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assert version output is set
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+        run: |
+          echo "version: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: version output is empty"
+            exit 1
+          fi
+          echo "PASS: version is '$VERSION'"
+
+      - name: Assert version is 1.0.1 (patch bump from 1.0.0)
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+        run: |
+          echo "version: $VERSION"
+          if [ "$VERSION" != "1.0.1" ]; then
+            echo "FAIL: expected '1.0.1' but got '$VERSION'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_optimistic output is set
+        env:
+          VERSION_OPTIMISTIC: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version_optimistic: $VERSION_OPTIMISTIC"
+          if [ -z "$VERSION_OPTIMISTIC" ]; then
+            echo "FAIL: version_optimistic output is empty"
+            exit 1
+          fi
+          echo "PASS: version_optimistic is '$VERSION_OPTIMISTIC'"
+
+      - name: Assert version_optimistic is 1.0 (major.minor)
+        env:
+          VERSION_OPTIMISTIC: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version_optimistic: $VERSION_OPTIMISTIC"
+          if [ "$VERSION_OPTIMISTIC" != "1.0" ]; then
+            echo "FAIL: expected '1.0' but got '$VERSION_OPTIMISTIC'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_tag output is set
+        env:
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+        run: |
+          echo "version_tag: $VERSION_TAG"
+          if [ -z "$VERSION_TAG" ]; then
+            echo "FAIL: version_tag output is empty"
+            exit 1
+          fi
+          echo "PASS: version_tag is '$VERSION_TAG'"
+
+      - name: Assert version_tag equals version (no prefix)
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+        run: |
+          echo "version: $VERSION"
+          echo "version_tag: $VERSION_TAG"
+          if [ "$VERSION_TAG" != "$VERSION" ]; then
+            echo "FAIL: expected version_tag '$VERSION_TAG' to equal version '$VERSION' (no prefix)"
+            exit 1
+          fi
+          echo "PASS"

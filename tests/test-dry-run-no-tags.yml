@@ -1,0 +1,65 @@
+name: Test dry-run with no existing tags (first release)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git config and local origin (no version tags)
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          # Remove any existing semver tags to simulate a fresh repo with no version tags
+          git tag -l | xargs -r git tag -d
+          # Set up a local bare repo as origin so git fetch --tags works
+          rm -rf /tmp/test-semver-notags-remote
+          git init --bare /tmp/test-semver-notags-remote
+          git push /tmp/test-semver-notags-remote HEAD:refs/heads/act-harness
+          # No tags pushed - simulating first release
+          git remote set-url origin /tmp/test-semver-notags-remote 2>/dev/null || \
+            git remote add origin /tmp/test-semver-notags-remote
+
+      - id: action
+        uses: .
+        with:
+          bump: patch
+          dry_run: true
+          per_branch: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assert version output is set
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+        run: |
+          echo "version: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: version output is empty"
+            exit 1
+          fi
+          echo "PASS: version is '$VERSION'"
+
+      - name: Assert version is 0.0.1 (patch bump from 0.0.0 baseline)
+        env:
+          VERSION: ${{ steps.action.outputs.version }}
+        run: |
+          echo "version: $VERSION"
+          if [ "$VERSION" != "0.0.1" ]; then
+            echo "FAIL: expected '0.0.1' but got '$VERSION'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_optimistic is 0.0
+        env:
+          VERSION_OPTIMISTIC: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version_optimistic: $VERSION_OPTIMISTIC"
+          if [ "$VERSION_OPTIMISTIC" != "0.0" ]; then
+            echo "FAIL: expected '0.0' but got '$VERSION_OPTIMISTIC'"
+            exit 1
+          fi
+          echo "PASS"
