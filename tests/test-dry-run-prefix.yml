@@ -1,4 +1,4 @@
-name: Test dry-run patch bump
+name: Test dry-run with v prefix
 on:
   workflow_dispatch:
 jobs:
@@ -9,12 +9,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure git identity and set up local origin
+      - name: Configure git identity and set up local origin with v-prefixed tag
         run: |
           git config user.email "test@example.com"
           git config user.name "Test User"
-          # Create a baseline semver tag
-          git tag 0.1.0
+          # Create a baseline v-prefixed semver tag
+          git tag v1.0.0
           # Set up a local bare repo as origin so git fetch --tags works
           # (per_branch mode uses git fetch --tags instead of the GitHub API)
           rm -rf "$GITHUB_WORKSPACE/.git-remote"
@@ -27,9 +27,10 @@ jobs:
       - id: action
         uses: .
         with:
-          bump: patch
+          bump: minor
           dry_run: "true"
           per_branch: "true"
+          prefix: "v"
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Assert version output is set
@@ -41,41 +42,38 @@ jobs:
             echo "FAIL: version output is empty"
             exit 1
           fi
-          # version should be a semver like X.Y.Z
+          # version (without prefix) should be a semver like X.Y.Z
           if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
             echo "FAIL: version '$VERSION' does not look like a semver"
             exit 1
           fi
-          # patch bump from 0.1.0 should yield 0.1.1
-          if [ "$VERSION" != "0.1.1" ]; then
-            echo "FAIL: expected version '0.1.1' but got '$VERSION'"
+          # minor bump from v1.0.0 should yield 1.1.0
+          if [ "$VERSION" != "1.1.0" ]; then
+            echo "FAIL: expected version '1.1.0' but got '$VERSION'"
             exit 1
           fi
           echo "PASS: version is '$VERSION'"
 
-      - name: Assert version_optimistic output is set
-        env:
-          VERSION_OPT: ${{ steps.action.outputs.version_optimistic }}
-        run: |
-          echo "version_optimistic: $VERSION_OPT"
-          if [ -z "$VERSION_OPT" ]; then
-            echo "FAIL: version_optimistic output is empty"
-            exit 1
-          fi
-          # version_optimistic should be X.Y (major.minor only)
-          if ! echo "$VERSION_OPT" | grep -qE '^[0-9]+\.[0-9]+$'; then
-            echo "FAIL: version_optimistic '$VERSION_OPT' does not look like major.minor"
-            exit 1
-          fi
-          echo "PASS: version_optimistic is '$VERSION_OPT'"
-
-      - name: Assert version_tag output is set
+      - name: Assert version_tag has v prefix
         env:
           VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+          VERSION: ${{ steps.action.outputs.version }}
         run: |
           echo "version_tag: $VERSION_TAG"
+          echo "version: $VERSION"
           if [ -z "$VERSION_TAG" ]; then
             echo "FAIL: version_tag output is empty"
+            exit 1
+          fi
+          # version_tag should start with 'v'
+          if ! echo "$VERSION_TAG" | grep -qE '^v'; then
+            echo "FAIL: version_tag '$VERSION_TAG' does not start with 'v'"
+            exit 1
+          fi
+          # version_tag should equal 'v' + version
+          EXPECTED="v${VERSION}"
+          if [ "$VERSION_TAG" != "$EXPECTED" ]; then
+            echo "FAIL: expected version_tag '$EXPECTED' but got '$VERSION_TAG'"
             exit 1
           fi
           echo "PASS: version_tag is '$VERSION_TAG'"

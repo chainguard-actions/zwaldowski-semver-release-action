@@ -1,4 +1,4 @@
-name: Test dry-run patch bump
+name: Test dry-run prerelease bump with preid
 on:
   workflow_dispatch:
 jobs:
@@ -14,7 +14,7 @@ jobs:
           git config user.email "test@example.com"
           git config user.name "Test User"
           # Create a baseline semver tag
-          git tag 0.1.0
+          git tag 1.0.0
           # Set up a local bare repo as origin so git fetch --tags works
           # (per_branch mode uses git fetch --tags instead of the GitHub API)
           rm -rf "$GITHUB_WORKSPACE/.git-remote"
@@ -27,12 +27,13 @@ jobs:
       - id: action
         uses: .
         with:
-          bump: patch
+          bump: prerelease
           dry_run: "true"
           per_branch: "true"
+          preid: "alpha"
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Assert version output is set
+      - name: Assert version contains preid
         env:
           VERSION: ${{ steps.action.outputs.version }}
         run: |
@@ -41,17 +42,12 @@ jobs:
             echo "FAIL: version output is empty"
             exit 1
           fi
-          # version should be a semver like X.Y.Z
-          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
-            echo "FAIL: version '$VERSION' does not look like a semver"
+          # prerelease version should contain the preid 'alpha'
+          if ! echo "$VERSION" | grep -q 'alpha'; then
+            echo "FAIL: version '$VERSION' does not contain preid 'alpha'"
             exit 1
           fi
-          # patch bump from 0.1.0 should yield 0.1.1
-          if [ "$VERSION" != "0.1.1" ]; then
-            echo "FAIL: expected version '0.1.1' but got '$VERSION'"
-            exit 1
-          fi
-          echo "PASS: version is '$VERSION'"
+          echo "PASS: version '$VERSION' contains preid 'alpha'"
 
       - name: Assert version_optimistic output is set
         env:
@@ -60,11 +56,6 @@ jobs:
           echo "version_optimistic: $VERSION_OPT"
           if [ -z "$VERSION_OPT" ]; then
             echo "FAIL: version_optimistic output is empty"
-            exit 1
-          fi
-          # version_optimistic should be X.Y (major.minor only)
-          if ! echo "$VERSION_OPT" | grep -qE '^[0-9]+\.[0-9]+$'; then
-            echo "FAIL: version_optimistic '$VERSION_OPT' does not look like major.minor"
             exit 1
           fi
           echo "PASS: version_optimistic is '$VERSION_OPT'"
