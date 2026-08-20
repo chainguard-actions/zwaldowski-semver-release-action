@@ -1,0 +1,52 @@
+name: Test dry-run basic (patch bump via VERSION env)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Set VERSION env to bypass the repo-scoped API call for listing tags.
+      # The action checks env.VERSION first and skips getMostRecentRepoTag() if set.
+      - id: action
+        uses: .
+        env:
+          VERSION: "1.2.3"
+        with:
+          bump: patch
+          dry_run: "true"
+          github_token: ${{ github.token }}
+
+      - name: Assert version output
+        env:
+          VERSION_OUT: ${{ steps.action.outputs.version }}
+        run: |
+          echo "version: $VERSION_OUT"
+          if [ "$VERSION_OUT" != "1.2.3" ]; then
+            echo "FAIL: expected version '1.2.3', got '$VERSION_OUT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_optimistic output
+        env:
+          VERSION_OPT: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version_optimistic: $VERSION_OPT"
+          if [ "$VERSION_OPT" != "1.2" ]; then
+            echo "FAIL: expected version_optimistic '1.2', got '$VERSION_OPT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_tag output (no prefix)
+        env:
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+        run: |
+          echo "version_tag: $VERSION_TAG"
+          if [ "$VERSION_TAG" != "1.2.3" ]; then
+            echo "FAIL: expected version_tag '1.2.3', got '$VERSION_TAG'"
+            exit 1
+          fi
+          echo "PASS"

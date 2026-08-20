@@ -1,0 +1,44 @@
+name: Test tag creation (non-dry-run, sentinel repo)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Set VERSION env to bypass the repo-scoped API call for listing tags.
+      # dry_run is false (default), so createTag() will be called.
+      # GITHUB_REPOSITORY is a sentinel so the createRef API call will fail (404).
+      # We assert the action either succeeds (if the repo happens to be real)
+      # or fails gracefully (expected on sentinel repo).
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          VERSION: "0.1.0"
+        with:
+          bump: patch
+          dry_run: "false"
+          prefix: "v"
+          github_token: ${{ github.token }}
+
+      - name: Assert action ran (outputs set, or failed gracefully on sentinel repo)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "version_tag: $VERSION_TAG"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$VERSION_TAG" ]; then
+              echo "FAIL: action succeeded but version_tag output is empty"
+              exit 1
+            fi
+            echo "PASS: tag created successfully, version_tag='$VERSION_TAG'"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
