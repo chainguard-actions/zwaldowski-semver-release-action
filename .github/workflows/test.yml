@@ -1,0 +1,27 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+permissions: {}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - run: npm ci
+      - run: npm test
+      - name: Self-test
+        id: semver
+        uses: ./
+        with:
+          bump: patch
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: true
+      - name: Output version
+        env:
+          SEMVER_VERSION: ${{ steps.semver.outputs.version }}
+        run: echo "New version is $SEMVER_VERSION"

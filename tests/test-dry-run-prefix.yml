@@ -1,0 +1,52 @@
+name: Test dry-run with version prefix
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        env:
+          # Setting VERSION skips the git tag API lookup entirely
+          VERSION: "2.5.0"
+        with:
+          bump: minor
+          github_token: ${{ github.token }}
+          dry_run: "true"
+          prefix: "v"
+
+      - name: Assert version output (no prefix)
+        env:
+          VERSION_OUT: ${{ steps.action.outputs.version }}
+        run: |
+          echo "version: $VERSION_OUT"
+          if [ "$VERSION_OUT" != "2.5.0" ]; then
+            echo "FAIL: expected version '2.5.0', got '$VERSION_OUT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_optimistic output (no prefix)
+        env:
+          VERSION_OPT: ${{ steps.action.outputs.version_optimistic }}
+        run: |
+          echo "version_optimistic: $VERSION_OPT"
+          if [ "$VERSION_OPT" != "2.5" ]; then
+            echo "FAIL: expected version_optimistic '2.5', got '$VERSION_OPT'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert version_tag output (with prefix)
+        env:
+          VERSION_TAG: ${{ steps.action.outputs.version_tag }}
+        run: |
+          echo "version_tag: $VERSION_TAG"
+          if [ "$VERSION_TAG" != "v2.5.0" ]; then
+            echo "FAIL: expected version_tag 'v2.5.0', got '$VERSION_TAG'"
+            exit 1
+          fi
+          echo "PASS"
