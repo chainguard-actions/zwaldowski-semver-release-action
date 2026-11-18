@@ -4,8 +4,13 @@
   "version": "v5",
   "commit_sha": "826de9527b1b733e45cd9204e2a99db8fd5746db",
   "url": "https://github.com/zwaldowski/semver-release-action",
-  "policy_sha": "d636be7e43ef829af6e853da6b3c7566db9f72fe",
+  "policy_sha": "374911c4be584df24e6da57af2d990570ef0f859",
   "test_policy_sha": "843adf9e4b8f85d0c08b27b9d0b09dd094b54702",
   "test_agent_version": "2",
-  "harden_agent_version": "2"
+  "harden_agent_version": "2",
+  "dist_artifact": {
+    "gcs_uri": "gs://patch-actions-node-artifacts/dist-artifacts/zwaldowski/semver-release-action/v5/sha256-59bb9f8f49a302076c03928a1d1700b2d7705d877fd99df0da8b935b2347ada1.tar.gz",
+    "sha256": "59bb9f8f49a302076c03928a1d1700b2d7705d877fd99df0da8b935b2347ada1",
+    "size_bytes": 295729
+  }
 }
